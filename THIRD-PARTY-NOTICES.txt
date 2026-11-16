@@ -1,0 +1,15 @@
+Afterimage third-party acknowledgements
+
+GSAP by GreenSock: https://github.com/greensock/GSAP
+Used for a finite, reduced-motion-aware interface entrance.
+License: https://gsap.com/standard-license/ (also preserved in the distribution header).
+
+React Bits by David Haz: https://github.com/DavidHDev/react-bits
+The title reveal in studio.js is a vanilla JavaScript adaptation of DecryptedText,
+retaining its fixed glyph-width and accessible-text approach. It does not use React.
+Original: src/content/TextAnimations/DecryptedText/DecryptedText.jsx
+License: vendor/react-bits-LICENSE.txt (MIT with Commons Clause).
+
+Design guidance: https://github.com/Leonxlnx/taste-skill
+Existing workflow preserved; canvas-first layout, deliberate typography,
+aligned edges, readable controls, responsive composition and restrained motion.
