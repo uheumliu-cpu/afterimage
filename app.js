@@ -25,7 +25,7 @@ function particles(data,t){const fade=1-(+$('trail').value/100)*.94;tc.fillStyle
 const glyphs=['LUX / LUMEN','aether :: x','TRACE / VITA','NOVA / eta','VOID_SIGNAL','MEMORIA / lux','0101 / OMEGA','VESTIGIUM'];
 // Original fragments: visual metaphors, not quotations or object recognition.
 function poetry(o,t){
-  const verse=Math.floor(t/7),pick=(o.id+verse)%6;
+  const verse=Math.floor(t),pick=(o.id+verse)%6;
   const lines=o.change>.02?
     ['the moment slips its frame','a trace becomes a river','time loosens its edges','the light forgets to stay','a margin full of motion','each passing leaves a line']:
     o.energy>.18?
@@ -35,12 +35,14 @@ function poetry(o,t){
 }
 function score(o,i,t){
   const notes=['C','D','E','G','A'],step=Math.min(4,Math.floor(o.energy*14)),octave=o.y<.5?'5':'4';
-  const note=notes[step]+octave,third=notes[(step+2)%5]+octave,beat=Math.floor(t/2),bpm=60+Math.round(Math.min(1,metrics.motion*24)*18)*4;
+  const note=notes[step]+octave,third=notes[(step+2)%5]+octave,beat=Math.floor(t),bpm=60+Math.round(Math.min(1,metrics.motion*24)*18)*4;
   const dynamics=o.energy>.24?'f':o.energy>.12?'mp':'pp';
   const bars=o.change>.02?['x x . x','x . x x']:['x . . .','x . x .'];
   return [note+' '+third+' | '+dynamics,(bpm>96?'allegro':bpm>72?'andante':'adagio')+' / '+bpm+' bpm','4/4 | '+bars[beat%2],o.change>.02?'crescendo / '+note:'sustain / '+note,'I - vi - IV - V','rest / 1:'+((beat%4)+1)][i%6];
 }
 function label(o,i,t){
+  t*=Number($('refreshRate')?.value)||2;
+  i+=Math.floor(t);
   const b=o.energy,m=o.change,id=o.id,lang=$('language').value;
   const semantic=window.AfterimageAI?.label(i,lang);if(semantic&&/^[\x20-\x7E]+$/.test(semantic))return semantic;
   const forms={
@@ -48,7 +50,7 @@ function label(o,i,t){
     music:()=>score(o,i+o.id,t),
     numeric:()=> (b*9).toFixed(7),
     code:()=>['motion['+id+']='+m.toFixed(3),'vec2('+o.x.toFixed(2)+','+o.y.toFixed(2)+')','if(light>'+b.toFixed(2)+')','trace::'+id.toString(16).padStart(4,'0')][i%4],
-    glyph:()=>glyphs[(id+Math.floor(t*.3))%glyphs.length],
+    glyph:()=>glyphs[(id+Math.floor(t))%glyphs.length],
     poetic:()=>[b>.18?'LIGHT ACCUMULATES':'LOW LUMINANCE',m>.02?'MOTION TRACE':'STILL FIELD',o.x<.5?'LEFT REGION':'RIGHT REGION','LUMA / '+b.toFixed(3)][i%4],
     roman:()=>['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'][id%12]+' / '+(b*9).toFixed(4)
   };
@@ -58,15 +60,21 @@ function label(o,i,t){
 function overlays(t){
   const scale=Math.max(.85,W/1100),isOriginal=viewMode==='original',r=contentRect();
   ctx.save();ctx.beginPath();ctx.rect(r.x*W,r.y*H,r.w*W,r.h*H);ctx.clip();
-  ctx.lineWidth=Math.max(.7,scale*.8);
-  if($('lines').checked){ctx.strokeStyle=isOriginal?'rgba(239,231,206,.32)':'rgba(179,179,157,.28)';ctx.beginPath();for(let i=0;i<targets.length;i++){const a=targets[i],b=targets[(i+7)%targets.length];if(!b)continue;ctx.moveTo(a.x*W,a.y*H);ctx.lineTo(b.x*W,b.y*H)}ctx.stroke()}
+  function stroke(kind){ctx.strokeStyle=$(kind+'Color').value;ctx.lineWidth=Number($(kind+'Width').value)*scale;const style=$(kind+'Style').value;ctx.setLineDash(style==='dashed'?[6*scale,4*scale]:style==='dotted'?[scale,4*scale]:[]);ctx.lineCap=style==='dotted'?'round':'butt'}
+  if($('lines').checked){stroke('line');ctx.beginPath();for(let i=0;i<targets.length;i++){const a=targets[i],b=targets[(i+7)%targets.length];if(!b)continue;ctx.moveTo(a.x*W,a.y*H);ctx.lineTo(b.x*W,b.y*H)}ctx.stroke()}
   const placed=[];
   targets.forEach((o,i)=>{
     const x=o.x*W,y=o.y*H,w=o.w*W,h=o.h*H;
-    if($('boxes').checked){ctx.strokeStyle=isOriginal?'rgba(250,236,202,.8)':'rgba(191,188,157,.43)';ctx.strokeRect(x-w/2,y-h/2,w,h);ctx.fillStyle='rgba(250,236,202,.9)';ctx.fillRect(x-1,y-1,2,2)}
+    if($('boxes').checked){
+      stroke('box');
+      if($('boxStyle').value==='corners'){
+        const d=Math.min(w,h)*.25;ctx.beginPath();
+        for(const [sx,sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){const bx=x+sx*w/2,by=y+sy*h/2;ctx.moveTo(bx-sx*d,by);ctx.lineTo(bx,by);ctx.lineTo(bx,by-sy*d)}ctx.stroke();
+      }else ctx.strokeRect(x-w/2,y-h/2,w,h);
+    }
     if($('text').checked){
-      const font=Math.max(9,(isOriginal?11:9)*scale),pad=4*scale;
-      ctx.font=font+'px Consolas,monospace';
+      const font=Number($('textSize').value)*scale,pad=4*scale;
+      const style=$('textStyle').value;ctx.font=(style==='italic'?'italic ':'')+$('textWeight').value+' '+font+'px '+(style==='serif'?'Georgia,serif':'Consolas,monospace');
       let s=label(o,i,t);const maxWidth=Math.max(20,r.w*W-2*pad-8);
       while(ctx.measureText(s).width>maxWidth&&s.length>1)s=Array.from(s).slice(0,-2).join('')+'…';
       const tw=ctx.measureText(s).width,bw=tw+pad*2,bh=font+pad*2;
@@ -74,7 +82,7 @@ function overlays(t){
       if(isOriginal&&placed.some(p=>lx<p.x+p.w+4&&lx+bw+4>p.x&&ly<p.y+p.h+3&&ly+bh+3>p.y))return;
       placed.push({x:lx,y:ly,w:bw,h:bh});
       
-      ctx.fillStyle=isOriginal?'#f6edda':'rgba(219,218,196,.85)';ctx.textBaseline='top';ctx.fillText(s,lx+pad,ly+pad);
+      ctx.fillStyle=$('textColor').value;ctx.textBaseline='top';ctx.fillText(s,lx+pad,ly+pad);
     }
   });ctx.restore();
 }
@@ -95,3 +103,7 @@ function download(blob,ext){const url=URL.createObjectURL(blob),a=document.creat
 $('snapshot').onclick=()=>canvas.toBlob(b=>{if(b){download(b,'png');toast('Image saved')}else toast('Image export failed. Please try again.')},'image/png');
 $('record').onclick=()=>{if(recorder?.state==='recording'){recorder.stop();return}if(!window.MediaRecorder||!canvas.captureStream){toast('Recording is unavailable. Try a recent Chrome or Edge browser.');return}try{const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'].find(t=>MediaRecorder.isTypeSupported(t));recordStream=canvas.captureStream(30);recorder=new MediaRecorder(recordStream,mime?{mimeType:mime}:undefined);recordChunks=[];recorder.ondataavailable=e=>{if(e.data.size)recordChunks.push(e.data)};recorder.onstop=()=>{const type=recorder.mimeType;download(new Blob(recordChunks,{type}),type.includes('mp4')?'mp4':'webm');recordStream.getTracks().forEach(t=>t.stop());$('record').textContent='Record canvas';$('record').classList.remove('recording');$('recordHint').textContent='Just the artwork. No interface, watermark or audio.';size();toast('Recording exported')};recorder.onerror=()=>toast('Recording failed. Stop and try again.');recorder.start(1000);recordStart=performance.now();setRunning(true);$('record').textContent='Stop recording';$('record').classList.add('recording');toast('Recording started. Press Stop to download.')}catch(e){recordStream?.getTracks().forEach(t=>t.stop());toast('Could not start recording. Please try another browser.')}};
 window.addEventListener('pagehide',()=>{stream?.getTracks().forEach(t=>t.stop());recordStream?.getTracks().forEach(t=>t.stop());if(mediaURL)URL.revokeObjectURL(mediaURL)});size();requestAnimationFrame(tick);
+
+for(const id of ['refreshRate','textColor','textSize','textWeight','textStyle','lineColor','lineWidth','lineStyle','boxColor','boxWidth','boxStyle']){
+  $(id).addEventListener('input',()=>{const out=$(id+'Out');if(out)out.textContent=$(id).value;pausedDirty=true});
+}
